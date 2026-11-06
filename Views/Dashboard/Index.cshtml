@@ -6,7 +6,7 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2">
     <div>
         <h1 class="h3 text-success fw-bold mb-0"><i class="bi bi-activity"></i> Telemetry Dashboard</h1>
-        <p class="text-muted small mb-0">Live sensor monitoring across active agricultural zones.</p>
+        <p class="text-muted small mb-0">Live sensor monitoring and manual record creation across active agricultural zones.</p>
     </div>
     <div>
         <a asp-action="Index" class="btn btn-sm btn-outline-success shadow-sm">
@@ -31,6 +31,39 @@
     </div>
 }
 
+<!-- Add New Telemetry Form Card -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white pt-3 border-0">
+        <h5 class="text-success mb-0"><i class="bi bi-plus-circle"></i> Add / Simulate Telemetry Record</h5>
+    </div>
+    <div class="card-body">
+        <form asp-action="Create" method="post" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label small text-muted">Sensor ID</label>
+                <input type="text" name="sensorId" class="form-control form-control-sm" placeholder="e.g. SENSOR-001" required />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small text-muted">Soil Moisture (%)</label>
+                <input type="number" step="0.1" name="soilMoisture" class="form-control form-control-sm" placeholder="45.5" required />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small text-muted">Temperature (°C)</label>
+                <input type="number" step="0.1" name="temperature" class="form-control form-control-sm" placeholder="24.0" required />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted">Environmental Status</label>
+                <input type="text" name="environmentalStatus" class="form-control form-control-sm" placeholder="e.g. Optimal / Dry" required />
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-success btn-sm w-100 py-2 fw-semibold">
+                    <i class="bi bi-check-lg"></i> Create Record
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Telemetry Cards Grid -->
 <div class="row g-3">
     @if (Model != null && Model.Any())
     {
@@ -59,7 +92,6 @@
                         </div>
                     </div>
                     <div class="card-footer bg-white border-0 pb-3">
-                        <!-- Calls the controller function that triggers the Azure Function -->
                         <form asp-action="TriggerIrrigation" method="post">
                             <input type="hidden" name="sensorId" value="@item.SensorId" />
                             <button type="submit" class="btn btn-outline-success w-100 btn-sm py-2 fw-semibold">
@@ -78,7 +110,7 @@
                 <div class="card-body text-muted">
                     <i class="bi bi-hdd-stack display-4 mb-3 d-block text-secondary"></i>
                     <h5>No Telemetry Records Found</h5>
-                    <p class="small mb-0">Azure Table Storage currently contains no active sensor streams.</p>
+                    <p class="small mb-0">Azure Table Storage currently contains no active sensor streams. Use the form above to add one!</p>
                 </div>
             </div>
         </div>

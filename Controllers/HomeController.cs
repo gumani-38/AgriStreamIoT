@@ -1,9 +1,11 @@
 using AgriStreamIoT.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 
 namespace AgriStreamIoT.Controllers
 {
+    [Authorize] // Ensures that only authenticated users can access the HomeController
     public class HomeController : Controller
     {
         public IActionResult Index()

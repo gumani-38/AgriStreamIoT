@@ -1,0 +1,84 @@
+﻿@model IEnumerable<string>
+@{
+    ViewData["Title"] = "AgriStream Media & Drone Imagery";
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2">
+    <div>
+        <h1 class="h3 text-success fw-bold mb-0"><i class="bi bi-camera-video"></i> Drone & Media Repository</h1>
+        <p class="text-muted small mb-0">Aerial imagery and field media files stored and retrieved from Azure Blob Storage.</p>
+    </div>
+    <div>
+        <a asp-action="Index" class="btn btn-sm btn-outline-success shadow-sm">
+            <i class="bi bi-arrow-clockwise"></i> Refresh Media
+        </a>
+    </div>
+</div>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> @TempData["Message"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Upload Form Card -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <h5 class="card-title text-success mb-3"><i class="bi bi-cloud-arrow-up"></i> Upload New Drone Imagery</h5>
+        <form asp-action="Upload" method="post" enctype="multipart/form-data" class="row g-3 align-items-center">
+            <div class="col-auto flex-grow-1">
+                <input type="file" name="file" class="form-control" required />
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-success px-4">
+                    <i class="bi bi-upload"></i> Upload File
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Media Files Grid -->
+<div class="row g-3">
+    @if (Model != null && Model.Any())
+    {
+        @foreach (var fileUrl in Model)
+        {
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body text-center">
+                        <img src="@fileUrl" alt="Drone Capture Preview" class="img-fluid rounded mb-3 bg-light p-2" style="height: 180px; width: 100%; object-fit: cover;" />
+                        <p class="text-muted small text-truncate mb-0">@fileUrl</p>
+                    </div>
+                    <div class="card-footer bg-white border-0 pb-3">
+                        <a href="@fileUrl" target="_blank" class="btn btn-outline-success w-100 btn-sm py-2 fw-semibold">
+                            <i class="bi bi-download"></i> View / Download Full Image
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="col-12">
+            <div class="card p-5 text-center shadow-sm border-0">
+                <div class="card-body text-muted">
+                    <i class="bi bi-cloud-arrow-up display-4 mb-3 d-block text-secondary"></i>
+                    <h5>No Media Files Found</h5>
+                    <p class="small mb-0">Azure Blob Storage currently contains no saved drone captures or images. Use the form above to upload one!</p>
+                </div>
+            </div>
+        </div>
+    }
+</div>

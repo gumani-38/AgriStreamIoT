@@ -1,14 +1,23 @@
-﻿using AgriStreamIoT.Models;
+﻿using AgriStreamIoT.Data; // Ensure this matches your DbContext namespace
+using AgriStreamIoT.Models;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace AgriStreamIoT.Controllers
 {
     public class AccountController : Controller
     {
+        private readonly ApplicationDbContext _context;
         private readonly IConfiguration _configuration;
 
-        public AccountController(IConfiguration configuration)
+        // Inject ApplicationDbContext alongside IConfiguration
+        public AccountController(ApplicationDbContext context, IConfiguration configuration)
         {
+            _context = context;
             _configuration = configuration;
         }
 
@@ -21,28 +30,77 @@ namespace AgriStreamIoT.Controllers
 
         // POST: /Account/Login
         [HttpPost]
-        public IActionResult Login(LoginViewModel model)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Login(LoginViewModel model)
         {
-            if (ModelState.IsValid)
-            {
-                // In production, validate credentials against Azure SQL Database (Username, Password, Role)
-                // For demonstration, verifying a default admin account:
-                if (model.Username == "admin" && model.Password == "password123")
-                {
-                    // Redirect to the main Telemetry Dashboard on successful authentication
-                    return RedirectToAction("Index", "Dashboard");
-                }
+            if (!ModelState.IsValid)
+                return View(model);
 
-                ModelState.AddModelError("", "Invalid username or password.");
+            var input = model.Username?.Trim();
+
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u =>
+                    u.Username == input || u.Email == input);
+
+            if (user == null)
+            {
+                ViewBag.DebugMessage = "USER NOT FOUND IN DATABASE";
+                return View(model);
             }
 
-            return View(model);
+            if (string.IsNullOrWhiteSpace(user.PasswordHash))
+            {
+                ViewBag.DebugMessage = "PASSWORD HASH IS EMPTY";
+                return View(model);
+            }
+
+            bool passwordValid;
+
+            try
+            {
+                passwordValid = BCrypt.Net.BCrypt.Verify(
+                    model.Password,
+                    user.PasswordHash.Trim()
+                );
+            }
+            catch (Exception ex)
+            {
+                ViewBag.DebugMessage = "BCrypt ERROR: " + ex.Message;
+                return View(model);
+            }
+
+            if (!passwordValid)
+            {
+                ViewBag.DebugMessage = "USER FOUND, BUT PASSWORD DOES NOT MATCH";
+                return View(model);
+            }
+
+            var claims = new List<Claim>
+    {
+        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+        new Claim(ClaimTypes.Name, user.Username),
+        new Claim(ClaimTypes.Email, user.Email ?? ""),
+        new Claim(ClaimTypes.Role, user.Role ?? "User")
+    };
+
+            var identity = new ClaimsIdentity(
+                claims,
+                CookieAuthenticationDefaults.AuthenticationScheme
+            );
+
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                new ClaimsPrincipal(identity)
+            );
+
+            return RedirectToAction("Index", "Dashboard");
         }
 
         // GET: /Account/Logout
-        public IActionResult Logout()
+        public async Task<IActionResult> Logout()
         {
-            // Handle sign-out logic here if using ASP.NET Core Identity/Cookie auth
+            // Sign out the user cookie session
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return RedirectToAction("Login");
         }
     }

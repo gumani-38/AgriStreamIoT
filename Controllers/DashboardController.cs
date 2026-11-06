@@ -1,89 +1,118 @@
-﻿
-using AgriStreamIoT.Service2;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Text;
+using Azure.Data.Tables;
 using System.Text.Json;
+using System.Text;
+using AgriStreamIoT.Models;
+using AgriStreamIoT.Service2;
 
 namespace AgriStreamIoT.Controllers
 {
+    [Authorize] // Protects the dashboard so only logged-in users can access it
     public class DashboardController : Controller
     {
-        private readonly AzureTableService _tableService;
-        private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly AzureTableService _tableService;
 
         public DashboardController(
-            AzureTableService tableService,
+            IConfiguration configuration,
             IHttpClientFactory httpClientFactory,
-            IConfiguration configuration)
+            AzureTableService tableService)
         {
-            _tableService = tableService;
-            _httpClientFactory = httpClientFactory;
             _configuration = configuration;
+            _httpClientFactory = httpClientFactory;
+            _tableService = tableService;
         }
 
-        // GET: Field Dashboard (Retrieves real-time telemetry from Azure Table Storage)
+        // GET: /Dashboard/Index
         public async Task<IActionResult> Index()
         {
-            var telemetryData = await _tableService.GetLatestTelemetryAsync();
-            return View(telemetryData);
+            string connectionString =
+                _configuration.GetConnectionString("AzureStorageConnectionString")
+                ?? throw new InvalidOperationException(
+                    "Azure Storage connection string is missing from appsettings.json."
+                );
+            var tableClient = new TableClient(connectionString, "TelemetryData");
+            await tableClient.CreateIfNotExistsAsync();
+
+            var telemetryList = new List<TelemetryData>();
+
+            // Query records from Azure Table Storage
+            await foreach (var entity in tableClient.QueryAsync<TelemetryData>())
+            {
+                telemetryList.Add(entity);
+            }
+
+            return View(telemetryList.OrderByDescending(t => t.Timestamp));
         }
 
-        // POST: Trigger Irrigation
+        // POST: /Dashboard/Create
         [HttpPost]
-        public async Task<IActionResult> TriggerIrrigation(string sensorId)
-        {
-            if (string.IsNullOrEmpty(sensorId))
-            {
-                TempData["Error"] = "Invalid Sensor ID provided.";
-                return RedirectToAction("Index");
-            }
-
-            // Execute the dedicated Azure Function trigger handler
-            bool isSuccess = await ExecuteIrrigationTriggerAsync(sensorId, "START_IRRIGATION");
-
-            if (isSuccess)
-            {
-                TempData["Message"] = $"Irrigation command dispatched successfully for Sensor {sensorId}!";
-            }
-            else
-            {
-                TempData["Error"] = $"Failed to dispatch irrigation command for Sensor {sensorId}.";
-            }
-
-            return RedirectToAction("Index");
-        }
-
-        /// <summary>
-        /// Modular Function to dispatch HTTP POST commands to the Azure Function Pipeline
-        /// </summary>
-        private async Task<bool> ExecuteIrrigationTriggerAsync(string sensorId, string actionCommand)
+        public async Task<IActionResult> Create(string sensorId, double soilMoisture, double temperature, string environmentalStatus)
         {
             try
             {
-                var client = _httpClientFactory.CreateClient();
-                string functionUrl = _configuration["AzureFunctions:TriggerIrrigationUrl"]
-                    ?? "https://<your-azure-function-app>.azurewebsites.net/api/TriggerIrrigation";
+                string connectionString =
+                    _configuration.GetConnectionString("AzureStorageConnectionString")
+                    ?? throw new InvalidOperationException(
+                        "Azure Storage connection string is missing from appsettings.json."
+                    );
 
-                var payload = new
+                var tableClient = new TableClient(connectionString, "TelemetryData");
+                await tableClient.CreateIfNotExistsAsync();
+
+                var newTelemetry = new TelemetryData
                 {
-                    SensorId = sensorId,
-                    Command = actionCommand,
-                    Timestamp = DateTime.UtcNow
+                    PartitionKey = "AgriculturalZone",
+                    RowKey = Guid.NewGuid().ToString(),
+                    SensorId = string.IsNullOrWhiteSpace(sensorId) ? "SENSOR-999" : sensorId,
+                    SoilMoisture = soilMoisture,
+                    Temperature = temperature,
+                    EnvironmentalStatus = string.IsNullOrWhiteSpace(environmentalStatus) ? "Normal" : environmentalStatus,
+                    Timestamp = DateTimeOffset.UtcNow
                 };
 
-                string jsonContent = JsonSerializer.Serialize(payload);
-                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-                HttpResponseMessage response = await client.PostAsync(functionUrl, content);
-                return response.IsSuccessStatusCode;
+                await tableClient.AddEntityAsync(newTelemetry);
+                TempData["Message"] = $"Telemetry record for {newTelemetry.SensorId} created successfully!";
             }
             catch (Exception ex)
             {
-                // Log exception details in production environment
-                Console.WriteLine($"Error triggering Azure Function: {ex.Message}");
-                return false;
+                TempData["Error"] = $"Failed to create telemetry record: {ex.Message}";
             }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        // POST: /Dashboard/TriggerIrrigation
+        [HttpPost]
+        public async Task<IActionResult> TriggerIrrigation(string sensorId)
+        {
+            try
+            {
+                string functionUrl = "https://agristreamfun-bkavceh0fag7dyf3.southafricanorth-01.azurewebsites.net/api/irrigation/trigger";
+
+                var client = _httpClientFactory.CreateClient();
+                var payload = new { Command = $"Irrigation Command for Sensor {sensorId}" };
+                var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+                var response = await client.PostAsync(functionUrl, content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    TempData["Message"] = $"Irrigation command successfully sent for sensor {sensorId}!";
+                }
+                else
+                {
+                    TempData["Error"] = "Failed to trigger irrigation via Azure Functions.";
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Error connecting to Azure Functions: {ex.Message}";
+            }
+
+            return RedirectToAction(nameof(Index));
         }
     }
 }
