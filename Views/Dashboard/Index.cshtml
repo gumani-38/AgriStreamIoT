@@ -1,0 +1,86 @@
+﻿@model IEnumerable<AgriStreamIoT.Models.TelemetryData>
+@{
+    ViewData["Title"] = "Real-Time Field Telemetry";
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2">
+    <div>
+        <h1 class="h3 text-success fw-bold mb-0"><i class="bi bi-activity"></i> Telemetry Dashboard</h1>
+        <p class="text-muted small mb-0">Live sensor monitoring across active agricultural zones.</p>
+    </div>
+    <div>
+        <a asp-action="Index" class="btn btn-sm btn-outline-success shadow-sm">
+            <i class="bi bi-arrow-clockwise"></i> Refresh Feed
+        </a>
+    </div>
+</div>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> @TempData["Message"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row g-3">
+    @if (Model != null && Model.Any())
+    {
+        @foreach (var item in Model)
+        {
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center pt-3 border-0">
+                        <span class="badge bg-success px-2 py-1">Sensor: @item.SensorId</span>
+                        <small class="text-muted">@item.Timestamp?.ToString("HH:mm:ss")</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center my-2 g-2">
+                            <div class="col-6 p-2 bg-light rounded-start border-end">
+                                <span class="d-block text-muted small">Soil Moisture</span>
+                                <span class="h4 fw-bold text-primary mb-0">@item.SoilMoisture%</span>
+                            </div>
+                            <div class="col-6 p-2 bg-light rounded-end">
+                                <span class="d-block text-muted small">Temperature</span>
+                                <span class="h4 fw-bold text-danger mb-0">@item.Temperature°C</span>
+                            </div>
+                        </div>
+                        <div class="mt-3 d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">System Status:</span>
+                            <span class="badge bg-info text-dark">@item.EnvironmentalStatus</span>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white border-0 pb-3">
+                        <!-- Calls the controller function that triggers the Azure Function -->
+                        <form asp-action="TriggerIrrigation" method="post">
+                            <input type="hidden" name="sensorId" value="@item.SensorId" />
+                            <button type="submit" class="btn btn-outline-success w-100 btn-sm py-2 fw-semibold">
+                                <i class="bi bi-water"></i> Trigger Irrigation
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="col-12">
+            <div class="card p-5 text-center shadow-sm border-0">
+                <div class="card-body text-muted">
+                    <i class="bi bi-hdd-stack display-4 mb-3 d-block text-secondary"></i>
+                    <h5>No Telemetry Records Found</h5>
+                    <p class="small mb-0">Azure Table Storage currently contains no active sensor streams.</p>
+                </div>
+            </div>
+        </div>
+    }
+</div>

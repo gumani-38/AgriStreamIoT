@@ -1,0 +1,56 @@
+﻿@model AgriStreamIoT.Models.LoginViewModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Sign In";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - AgriStream IoT</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+</head>
+<body class="bg-success d-flex align-items-center min-vh-100 py-4">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-11 col-sm-8 col-md-6 col-lg-4">
+                <div class="card shadow-lg border-0 rounded-4">
+                    <div class="card-body p-4 p-md-5 text-center">
+                        <div class="mb-3">
+                            <span class="bg-success text-white p-3 rounded-circle d-inline-block shadow-sm">
+                                <i class="bi bi-tree-fill fs-3"></i>
+                            </span>
+                        </div>
+                        <h1 class="h4 text-success fw-bold mb-1">AgriStream IoT</h1>
+                        <p class="text-muted small mb-4">Smart Farm Management System</p>
+
+                        <form asp-action="Login" method="post" class="text-start">
+                            <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+                            <div class="form-floating mb-3">
+                                <input asp-for="Username" class="form-control" id="floatingInput" placeholder="Username" required />
+                                <label for="floatingInput">Username</label>
+                                <span asp-validation-for="Username" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-floating mb-4">
+                                <input asp-for="Password" type="password" class="form-control" id="floatingPassword" placeholder="Password" required />
+                                <label for="floatingPassword">Password</label>
+                                <span asp-validation-for="Password" class="text-danger small"></span>
+                            </div>
+
+                            <button type="submit" class="btn btn-success w-100 py-3 fw-bold shadow-sm">
+                                Secure Login <i class="bi bi-arrow-right ms-1"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

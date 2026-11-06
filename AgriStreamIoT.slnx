@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="../AgriStream_Functions/AgriStream_Functions.csproj" />
+  <Project Path="AgriStreamIoT.csproj" />
+</Solution>
